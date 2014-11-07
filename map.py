@@ -8,20 +8,13 @@ import fiona
 from shapely import geometry
 from threading import Timer
 
-'''
-1. Open CSV of airport locations
-2. For each...
-   - get_buffered_bbox of location
-   -- get_osm_data
-   - osm2shp
-   - clean_up
-   - create map with kartograph
-
-'''
+# Given lat/lng of airport, create a 2.5mi buffer and return its envelope as a string
 def get_buffered_bbox(loc):
+    # buffer by 2.5mi
     bbox = ','.join(str(coord) for coord in geometry.Point(float(loc[2]), float(loc[1])).buffer(0.036207221).envelope.exterior.bounds)
     get_osm_data(loc[0], bbox)
 
+# Use the OSM Overpass API to get all runways and taxiways in the airport's bbox
 def get_osm_data(place, bbox):
     print place
     url = 'http://overpass-api.de/api/interpreter'
@@ -34,11 +27,14 @@ def get_osm_data(place, bbox):
         output.write(result)
         osm2shp(place)
 
+# Convert the resultant OSM extract to a shapefile so we can alter attributes easily
 def osm2shp(place):
     convert = subprocess.Popen(['ogr2ogr -nlt LINESTRING -skipfailures -f "ESRI Shapefile" shapefiles/' + place + ' osm/' + place + '.osm'], shell=True)
+    # Really couldn't figure out how to avoid this hack...everything broke without it
     timer = Timer(5.0, clean_up, [place])
     timer.start()
 
+# Remove properties we don't need, and add ones that we do
 def clean_up(place):
     with fiona.open('shapefiles/' + place + '/lines.shp', 'r') as source:
         source_driver = source.driver
@@ -64,6 +60,7 @@ def clean_up(place):
                 output.write(feature)
     merp(place)
 
+# Style and export the airport to an SVG
 def merp(place):
     K = Kartograph()
     css = open('styles.css').read()
@@ -77,6 +74,7 @@ def merp(place):
 
     K.generate(config, outfile='svg/' + place + '.svg', stylesheet=css)
 
+# Read in our airport data and start the process
 with open('airports.csv', 'rb') as input:
     reader = csv.reader(input)
     # name, lon, lat
