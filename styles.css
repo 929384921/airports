@@ -1,0 +1,7 @@
+.runways[p_type=runway] {
+    stroke-width: 12px;
+}
+
+.runways[p_type=taxiway] {
+    stroke-width: 3px;
+}
