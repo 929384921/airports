@@ -56,7 +56,7 @@ def clean_up(place):
                   if kv[0].replace('"', '') == "aeroway":
                       feature['properties']['p_type'] = kv[1].replace('"', '')
                 del feature['properties']['other_tags']
-                feature['properties']['airport'] = 'MSN'
+                feature['properties']['airport'] = place
                 output.write(feature)
     merp(place)
 
