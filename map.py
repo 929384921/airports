@@ -25,17 +25,17 @@ def get_osm_data(place, bbox):
     result = response.read()
     with open('osm/' + place + '.osm', 'w') as output:
         output.write(result)
-        osm2shp(place)
+        osm2shp(place, bbox)
 
 # Convert the resultant OSM extract to a shapefile so we can alter attributes easily
-def osm2shp(place):
+def osm2shp(place, bbox):
     convert = subprocess.Popen(['ogr2ogr -nlt LINESTRING -skipfailures -f "ESRI Shapefile" shapefiles/' + place + ' osm/' + place + '.osm'], shell=True)
     # Really couldn't figure out how to avoid this hack...everything broke without it
-    timer = Timer(5.0, clean_up, [place])
+    timer = Timer(5.0, clean_up, [place, bbox])
     timer.start()
 
 # Remove properties we don't need, and add ones that we do
-def clean_up(place):
+def clean_up(place, bbox):
     with fiona.open('shapefiles/' + place + '/lines.shp', 'r') as source:
         source_driver = source.driver
         source_crs = source.crs
@@ -58,21 +58,30 @@ def clean_up(place):
                 del feature['properties']['other_tags']
                 feature['properties']['airport'] = place
                 output.write(feature)
-    merp(place)
+    merp(place, bbox)
 
 # Style and export the airport to an SVG
-def merp(place):
+def merp(place, bbox):
+    bbox = bbox.split(",")
+    bbox = [ float(ll) for ll in bbox ]
+
+    new_bbox = geometry.LineString([(bbox[0], bbox[1]), (bbox[2], bbox[3])]).envelope.buffer(0.05).bounds
+
     K = Kartograph()
     css = open('styles.css').read()
 
     config = {
-    	'layers': [{
-    		'src': 'shapefiles/' + place + '/' + place + '_out.shp',
-    		'class': 'runways'
-    	}]
+      'layers': [{
+        'src': 'shapefiles/' + place + '/' + place + '_out.shp',
+        'class': 'runways'
+      }],
+        'bounds': {
+            'mode': 'bbox',
+            'data': [bbox[1], bbox[0], bbox[3], bbox[2]]
+        }
     }
 
-    K.generate(config, outfile='svg/' + place + '.svg', stylesheet=css)
+    K.generate(config, outfile='svg3/' + place + '.svg', stylesheet=css)
 
 # Read in our airport data and start the process
 with open('airports.csv', 'rb') as input:
